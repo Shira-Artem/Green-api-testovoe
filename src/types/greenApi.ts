@@ -4,6 +4,12 @@ export type GreenApiCredentials = {
   apiTokenInstance: string
 }
 
+export type CheckedAccount = {
+  chatId: string
+  phoneNumber: number
+  username?: string
+}
+
 export type InstanceState = 'authorized' | 'notAuthorized' | 'blocked' | 'suspended' | 'starting' | 'pendingPassword'
 
 export type NotificationBody = {

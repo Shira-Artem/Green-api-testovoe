@@ -1,4 +1,4 @@
-import type { GreenApiCredentials, InstanceState, Notification } from '../types/greenApi'
+import type { CheckedAccount, GreenApiCredentials, InstanceState, Notification } from '../types/greenApi'
 
 export class GreenApiError extends Error {
   constructor(
@@ -93,10 +93,12 @@ export function createGreenApi(credentials: GreenApiCredentials) {
       return result.stateInstance
     },
 
-    async checkAccount(phoneNumber: number): Promise<string | null> {
+    async checkAccount(phoneNumber: number): Promise<CheckedAccount | null> {
       const result = await request<{
         exist?: boolean
         chatId?: string
+        username?: string
+        phoneNumber?: number
         status?: boolean
         reason?: string
         data?: { reason?: string }
@@ -107,7 +109,12 @@ export function createGreenApi(credentials: GreenApiCredentials) {
       })
       if (result?.exist === false) return null
       if (result?.exist === true && typeof result.chatId === 'string' && /^[1-9]\d*$/.test(result.chatId)) {
-        return result.chatId
+        return {
+          chatId: result.chatId,
+          phoneNumber: typeof result.phoneNumber === 'number' && Number.isSafeInteger(result.phoneNumber) && result.phoneNumber > 0
+            ? result.phoneNumber : phoneNumber,
+          username: typeof result.username === 'string' ? result.username : undefined,
+        }
       }
       const reason = sanitize(result?.data?.reason ?? result?.reason)
       if (reason === 'rate_limit_exceeded') {

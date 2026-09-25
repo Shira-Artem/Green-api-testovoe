@@ -11,19 +11,40 @@ export function useMessenger(credentials: GreenApiCredentials) {
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pollError, setPollError] = useState<string | null>(null)
+  const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const sendingRef = useRef(false)
+  const checkingRef = useRef(false)
 
   useNotifications(api, receiveIncoming, (error) => setPollError(errorText(error)))
 
-  function createChatById(value: string): boolean {
-    if (!value.trim()) {
-      setCreateError('Введите Telegram chatId пользователя.')
+  async function createChatByPhone(value: string): Promise<boolean> {
+    if (checkingRef.current) return false
+    const digits = value.replace(/\D/g, '')
+    const phoneNumber = Number(digits)
+    if (!digits || !Number.isSafeInteger(phoneNumber) || phoneNumber <= 0) {
+      setCreateError('Введите номер телефона в международном формате.')
       return false
     }
 
+    checkingRef.current = true
+    setIsCheckingAccount(true)
     setCreateError(null)
-    return createChat(value) !== null
+    try {
+      const account = await api.checkAccount(phoneNumber)
+      if (!account) {
+        setCreateError('Аккаунт Telegram по этому номеру не найден или номер скрыт настройками приватности.')
+        return false
+      }
+      createChat({ id: account.chatId, ...account })
+      return true
+    } catch (error) {
+      setCreateError(errorText(error))
+      return false
+    } finally {
+      checkingRef.current = false
+      setIsCheckingAccount(false)
+    }
   }
 
   async function sendText(chatId: string, value: string): Promise<boolean> {
@@ -37,15 +58,15 @@ export function useMessenger(credentials: GreenApiCredentials) {
       return false
     }
     if (sendingRef.current || pollError) return false
-    const chat = state.chats.find((item) => item.id === chatId)
+    const chat = state.chats.find((item) => item.chatId === chatId)
     if (!chat) return false
 
     sendingRef.current = true
     setIsSending(true)
     setSendError(null)
     try {
-      const idMessage = await api.sendMessage(chat.id, text)
-      addOutgoing(chat.id, {
+      const idMessage = await api.sendMessage(chat.chatId, text)
+      addOutgoing(chat.chatId, {
         idMessage,
         text,
         timestamp: Math.floor(Date.now() / 1000),
@@ -66,5 +87,5 @@ export function useMessenger(credentials: GreenApiCredentials) {
     selectChat(chatId)
   }
 
-  return { state, createChatById, createError, chooseChat, sendText, isSending, sendError, pollError }
+  return { state, createChatByPhone, isCheckingAccount, createError, chooseChat, sendText, isSending, sendError, pollError }
 }

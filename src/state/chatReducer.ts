@@ -13,7 +13,7 @@ export function normalizeChatId(value: string | undefined): string {
 }
 
 type ChatsAction =
-  | { type: 'create'; chatId: string }
+  | { type: 'create'; chat: Chat }
   | { type: 'select'; chatId: string }
   | { type: 'outgoing'; chatId: string; message: ChatMessage }
   | { type: 'incoming'; chatId: string; displayName?: string; message: ChatMessage }
@@ -24,9 +24,17 @@ function hasMessage(state: ChatsState, chatId: string, idMessage: string): boole
 
 export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState {
   if (action.type === 'create') {
-    const existing = state.chats.find((chat) => chat.id === action.chatId)
-    if (existing) return { ...state, activeChatId: existing.id }
-    const chat: Chat = { id: action.chatId }
+    const existing = state.chats.find((chat) => chat.chatId === action.chat.chatId)
+    if (existing) {
+      return {
+        ...state,
+        chats: state.chats.map((chat) => chat.chatId === action.chat.chatId
+          ? { ...chat, phoneNumber: action.chat.phoneNumber, username: action.chat.username }
+          : chat),
+        activeChatId: existing.id,
+      }
+    }
+    const chat = action.chat
     return {
       ...state,
       chats: [chat, ...state.chats],
@@ -43,7 +51,7 @@ export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState 
   if (hasMessage(state, action.chatId, action.message.idMessage)) return state
 
   if (action.type === 'outgoing') {
-    if (!state.chats.some((chat) => chat.id === action.chatId)) return state
+    if (!state.chats.some((chat) => chat.chatId === action.chatId)) return state
     return {
       ...state,
       messagesByChat: {
@@ -53,16 +61,19 @@ export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState 
     }
   }
 
-  const existing = state.chats.find((chat) => chat.id === action.chatId)
+  const existing = state.chats.find((chat) => chat.chatId === action.chatId)
   const chatId = action.chatId
   const chat: Chat = {
     id: chatId,
+    chatId,
+    phoneNumber: existing?.phoneNumber ?? null,
+    username: existing?.username,
     displayName: existing?.displayName ?? action.displayName,
   }
 
   return {
     chats: existing
-      ? state.chats.map((item) => item.id === chatId ? chat : item)
+      ? state.chats.map((item) => item.chatId === chatId ? chat : item)
       : [chat, ...state.chats],
     messagesByChat: {
       ...state.messagesByChat,

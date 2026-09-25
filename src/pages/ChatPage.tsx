@@ -14,20 +14,20 @@ function formatTime(timestamp: number) {
 }
 
 export function ChatPage({
-  state, createChatById, createError, chooseChat, sendText, isSending, sendError, pollError, onDisconnect,
+  state, createChatByPhone, isCheckingAccount, createError, chooseChat, sendText, isSending, sendError, pollError, onDisconnect,
 }: ChatPageProps) {
   const [creating, setCreating] = useState(false)
-  const [chatIdInput, setChatIdInput] = useState('')
+  const [phoneInput, setPhoneInput] = useState('')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
 
   const activeChat = state.chats.find((chat) => chat.id === state.activeChatId)
   const messages = activeChat ? state.messagesByChat[activeChat.id] ?? [] : []
   const draft = activeChat ? drafts[activeChat.id] ?? '' : ''
 
-  function handleCreate(event: FormEvent<HTMLFormElement>) {
+  async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (createChatById(chatIdInput)) {
-      setChatIdInput('')
+    if (await createChatByPhone(phoneInput)) {
+      setPhoneInput('')
       setCreating(false)
     }
   }
@@ -57,17 +57,17 @@ export function ChatPage({
               <span className="eyebrow">Сообщения</span>
               <h1>Чаты</h1>
             </div>
-            <button className="new-chat-button" type="button" onClick={() => setCreating((value) => !value)} aria-expanded={creating}>
+            <button className="new-chat-button" type="button" onClick={() => setCreating((value) => !value)} aria-expanded={creating} disabled={isCheckingAccount}>
               <PlusIcon size={18} /> <span>Новый чат</span>
             </button>
           </div>
 
           {creating && (
-            <form className="new-chat-form" onSubmit={handleCreate}>
-              <label htmlFor="new-chat-id">Telegram chatId</label>
+            <form className="new-chat-form" onSubmit={(event) => void handleCreate(event)}>
+              <label htmlFor="new-phone">Номер телефона</label>
               <div>
-                <input id="new-chat-id" type="text" value={chatIdInput} onChange={(event) => setChatIdInput(event.target.value)} placeholder="Например: 1381516517" autoFocus />
-                <button type="submit">Создать</button>
+                <input id="new-phone" type="tel" value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="+79991234567" disabled={isCheckingAccount} autoFocus />
+                <button type="submit" disabled={isCheckingAccount}>{isCheckingAccount ? 'Проверяем…' : 'Создать'}</button>
               </div>
               {createError && <p role="alert">{createError}</p>}
             </form>
@@ -90,7 +90,7 @@ export function ChatPage({
               )
             })}
           </nav>
-          {state.chats.length === 0 && <p className="empty-list">Введите Telegram chatId пользователя.</p>}
+          {state.chats.length === 0 && <p className="empty-list">Создайте чат по номеру телефона.</p>}
           <p className="sidebar-note">GREEN-API · Telegram</p>
         </aside>
 
