@@ -3,6 +3,7 @@ import { GreenApiError, type GreenApi } from '../services/greenApi'
 import type { NotificationBody } from '../types/greenApi'
 
 function waitForRetry(signal: AbortSignal): Promise<void> {
+  if (signal.aborted) return Promise.resolve()
   return new Promise((resolve) => {
     const timeout = window.setTimeout(() => {
       signal.removeEventListener('abort', onAbort)
@@ -23,6 +24,7 @@ export function useNotifications(
 ) {
   const notificationRef = useRef(onNotification)
   const fatalErrorRef = useRef(onFatalError)
+  const loopRef = useRef<Promise<void> | null>(null)
   notificationRef.current = onNotification
   fatalErrorRef.current = onFatalError
 
@@ -30,11 +32,19 @@ export function useNotifications(
     const controller = new AbortController()
 
     async function poll() {
+      console.debug('[GREEN-API] polling started')
       while (!controller.signal.aborted) {
         try {
           const notification = await api.receiveNotification(controller.signal)
           if (!notification) continue
 
+          console.debug('[GREEN-API] notification received', {
+            receiptId: notification.receiptId,
+            'body.typeWebhook': notification.body.typeWebhook,
+            'body.idMessage': notification.body.idMessage,
+            'body.senderData.chatId': notification.body.senderData?.chatId,
+            'body.messageData.typeMessage': notification.body.messageData?.typeMessage,
+          })
           try {
             notificationRef.current(notification.body)
           } finally {
@@ -42,7 +52,11 @@ export function useNotifications(
           }
         } catch (error) {
           if (controller.signal.aborted) return
+          if (error instanceof Error && error.name === 'AbortError') continue
           if (error instanceof GreenApiError && [400, 401, 403, 466].includes(error.status ?? 0)) {
+            if (error.status === 400) {
+              console.error('[GREEN-API] polling HTTP 400:', error.apiMessage ?? error.message)
+            }
             fatalErrorRef.current(error)
             return
           }
@@ -51,8 +65,16 @@ export function useNotifications(
       }
     }
 
-    void poll()
-    return () => controller.abort()
+    const previousLoop = loopRef.current
+    const loop = (async () => {
+      if (previousLoop) await previousLoop
+      if (!controller.signal.aborted) await poll()
+    })()
+    loopRef.current = loop
+    return () => {
+      console.debug('[GREEN-API] polling cleanup requested')
+      controller.abort()
+    }
   }, [api])
 }
 

@@ -56,6 +56,8 @@ export function createGreenApi(credentials: GreenApiCredentials) {
     return message
       .replaceAll(apiTokenInstance, '[скрыто]')
       .replaceAll(encodeURIComponent(apiTokenInstance), '[скрыто]')
+      .replaceAll(idInstance, '[idInstance]')
+      .replaceAll(apiUrl, '[apiUrl]')
   }
 
   async function request<T>(url: string, init?: RequestInit): Promise<T> {

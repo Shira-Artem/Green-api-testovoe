@@ -85,8 +85,9 @@ export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState 
 
 export function incomingAction(body: NotificationBody): ChatsAction | null {
   if (body.typeWebhook !== 'incomingMessageReceived') return null
-  if (body.senderData?.chatType !== 'user') return null
-  const chatId = normalizeChatId(body.senderData.chatId)
+  const senderData = body.senderData
+  if (!senderData || (senderData.chatType && senderData.chatType !== 'user')) return null
+  const chatId = normalizeChatId(senderData.chatId)
   if (!chatId || !body.idMessage) return null
 
   const data = body.messageData
@@ -98,9 +99,9 @@ export function incomingAction(body: NotificationBody): ChatsAction | null {
   return {
     type: 'incoming',
     chatId,
-    displayName: body.senderData.chatName?.trim()
-      || body.senderData.senderContactName?.trim()
-      || body.senderData.senderName?.trim()
+    displayName: senderData.chatName?.trim()
+      || senderData.senderContactName?.trim()
+      || senderData.senderName?.trim()
       || undefined,
     message: {
       idMessage: body.idMessage,
