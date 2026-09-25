@@ -95,7 +95,7 @@ export function createGreenApi(credentials: GreenApiCredentials) {
       return result.stateInstance
     },
 
-    async checkAccount(phoneNumber: number): Promise<CheckedAccount | null> {
+    async checkAccount(phoneNumber: number, signal?: AbortSignal): Promise<CheckedAccount | null> {
       const result = await request<{
         exist?: boolean
         chatId?: string
@@ -108,6 +108,7 @@ export function createGreenApi(credentials: GreenApiCredentials) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phoneNumber }),
+        signal,
       })
       if (result?.exist === false) return null
       if (result?.exist === true && typeof result.chatId === 'string' && /^[1-9]\d*$/.test(result.chatId)) {

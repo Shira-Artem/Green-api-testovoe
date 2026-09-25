@@ -36,7 +36,7 @@ export function useMessenger(credentials: GreenApiCredentials) {
         setCreateError('Аккаунт Telegram по этому номеру не найден или номер скрыт настройками приватности.')
         return false
       }
-      createChat({ id: account.chatId, ...account, displayName: value.trim() })
+      createChat({ ...account, displayName: account.username?.trim() || value.trim() })
       return true
     } catch (error) {
       setCreateError(errorText(error))

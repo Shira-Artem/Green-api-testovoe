@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Brand } from '../components/Brand'
 import { PlusIcon, SendIcon, SettingsIcon } from '../components/Icons'
 import type { useMessenger } from '../hooks/useMessenger'
+import type { Chat } from '../types/chat'
 
 type ChatPageProps = ReturnType<typeof useMessenger> & {
   onDisconnect: () => void
@@ -13,6 +14,11 @@ function formatTime(timestamp: number) {
   })
 }
 
+function chatTitle(chat: Chat): string {
+  return chat.username?.trim() || chat.displayName?.trim()
+    || (chat.phoneNumber ? String(chat.phoneNumber) : 'Собеседник')
+}
+
 export function ChatPage({
   state, createChatByPhone, isCheckingAccount, createError, chooseChat, sendText, isSending, sendError, pollError, onDisconnect,
 }: ChatPageProps) {
@@ -20,9 +26,9 @@ export function ChatPage({
   const [phoneInput, setPhoneInput] = useState('')
   const [drafts, setDrafts] = useState<Record<string, string>>({})
 
-  const activeChat = state.chats.find((chat) => chat.id === state.activeChatId)
-  const messages = activeChat ? state.messagesByChat[activeChat.id] ?? [] : []
-  const draft = activeChat ? drafts[activeChat.id] ?? '' : ''
+  const activeChat = state.chats.find((chat) => chat.chatId === state.activeChatId)
+  const messages = activeChat ? state.messagesByChat[activeChat.chatId] ?? [] : []
+  const draft = activeChat ? drafts[activeChat.chatId] ?? '' : ''
 
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -35,7 +41,7 @@ export function ChatPage({
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!activeChat) return
-    const chatId = activeChat.id
+    const chatId = activeChat.chatId
     if (await sendText(chatId, draft)) {
       setDrafts((current) => ({ ...current, [chatId]: '' }))
     }
@@ -66,7 +72,7 @@ export function ChatPage({
             <form className="new-chat-form" onSubmit={(event) => void handleCreate(event)}>
               <label htmlFor="new-phone">Номер телефона</label>
               <div>
-                <input id="new-phone" type="tel" value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="+79991234567" disabled={isCheckingAccount} autoFocus />
+                <input id="new-phone" type="tel" value={phoneInput} onChange={(event) => setPhoneInput(event.target.value)} placeholder="Номер в международном формате" disabled={isCheckingAccount} autoFocus />
                 <button type="submit" disabled={isCheckingAccount}>{isCheckingAccount ? 'Проверяем…' : 'Создать'}</button>
               </div>
               {createError && <p role="alert">{createError}</p>}
@@ -75,12 +81,12 @@ export function ChatPage({
 
           <nav className="chat-list" aria-label="Чаты">
             {state.chats.map((chat, index) => {
-              const chatMessages = state.messagesByChat[chat.id] ?? []
+              const chatMessages = state.messagesByChat[chat.chatId] ?? []
               const last = chatMessages.at(-1)
-              const name = chat.displayName || chat.id
+              const name = chatTitle(chat)
               const color = ['blue', 'violet', 'peach'][index % 3]
               return (
-                <button className={`chat-list-item ${chat.id === state.activeChatId ? 'is-active' : ''}`} type="button" onClick={() => chooseChat(chat.id)} key={chat.id} aria-current={chat.id === state.activeChatId ? 'page' : undefined}>
+                <button className={`chat-list-item ${chat.chatId === state.activeChatId ? 'is-active' : ''}`} type="button" onClick={() => chooseChat(chat.chatId)} key={chat.chatId} aria-current={chat.chatId === state.activeChatId ? 'page' : undefined}>
                   <span className={`avatar avatar-${color}`} aria-hidden="true">{name[0].toUpperCase()}</span>
                   <span className="chat-list-copy">
                     <span className="chat-list-line"><strong>{name}</strong><small>{last ? formatTime(last.timestamp) : ''}</small></span>
@@ -96,10 +102,9 @@ export function ChatPage({
 
         <section className="conversation" aria-labelledby="conversation-title">
           <header className="conversation-header">
-            {activeChat && <span className="avatar avatar-blue" aria-hidden="true">{(activeChat.displayName || activeChat.id)[0].toUpperCase()}</span>}
+            {activeChat && <span className="avatar avatar-blue" aria-hidden="true">{chatTitle(activeChat)[0].toUpperCase()}</span>}
             <div className="conversation-person">
-              <h2 id="conversation-title">{activeChat?.displayName || activeChat?.id || 'Выберите чат'}</h2>
-              {activeChat && <span>ID чата: {activeChat.id}</span>}
+              <h2 id="conversation-title">{activeChat ? chatTitle(activeChat) : 'Выберите чат'}</h2>
             </div>
             <span className="demo-badge">Telegram</span>
           </header>
@@ -123,7 +128,7 @@ export function ChatPage({
 
           <div className="composer-wrap">
             <form className="composer" onSubmit={(event) => void handleSend(event)}>
-              <input type="text" aria-label="Сообщение" placeholder={activeChat ? 'Написать сообщение...' : 'Сначала выберите чат'} value={draft} onChange={(event) => activeChat && setDrafts((current) => ({ ...current, [activeChat.id]: event.target.value }))} disabled={!activeChat || isSending || Boolean(pollError)} />
+              <input type="text" aria-label="Сообщение" placeholder={activeChat ? 'Написать сообщение...' : 'Сначала выберите чат'} value={draft} onChange={(event) => activeChat && setDrafts((current) => ({ ...current, [activeChat.chatId]: event.target.value }))} disabled={!activeChat || isSending || Boolean(pollError)} />
               <button type="submit" disabled={!activeChat || !draft.trim() || isSending || Boolean(pollError)} aria-label="Отправить сообщение" title="Отправить сообщение">
                 <SendIcon />
               </button>
