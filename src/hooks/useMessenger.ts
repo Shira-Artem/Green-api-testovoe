@@ -11,40 +11,19 @@ export function useMessenger(credentials: GreenApiCredentials) {
   const [isSending, setIsSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const [pollError, setPollError] = useState<string | null>(null)
-  const [isCheckingAccount, setIsCheckingAccount] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const sendingRef = useRef(false)
-  const checkingRef = useRef(false)
 
   useNotifications(api, receiveIncoming, (error) => setPollError(errorText(error)))
 
-  async function createChatByPhone(value: string): Promise<boolean> {
-    if (checkingRef.current) return false
-    const digits = value.replace(/\D/g, '')
-    const phoneNumber = Number(digits)
-    if (!digits || !Number.isSafeInteger(phoneNumber) || phoneNumber <= 0) {
-      setCreateError('Введите номер телефона в международном формате.')
+  function createChatById(value: string): boolean {
+    if (!value.trim()) {
+      setCreateError('Введите Telegram chatId пользователя.')
       return false
     }
 
-    checkingRef.current = true
-    setIsCheckingAccount(true)
     setCreateError(null)
-    try {
-      const chatId = await api.checkAccount(phoneNumber)
-      if (!chatId) {
-        setCreateError('Аккаунт Telegram по этому номеру не найден или номер скрыт настройками приватности.')
-        return false
-      }
-      createChat(chatId)
-      return true
-    } catch (error) {
-      setCreateError(errorText(error))
-      return false
-    } finally {
-      checkingRef.current = false
-      setIsCheckingAccount(false)
-    }
+    return createChat(value) !== null
   }
 
   async function sendText(chatId: string, value: string): Promise<boolean> {
@@ -87,5 +66,5 @@ export function useMessenger(credentials: GreenApiCredentials) {
     selectChat(chatId)
   }
 
-  return { state, createChatByPhone, isCheckingAccount, createError, chooseChat, sendText, isSending, sendError, pollError }
+  return { state, createChatById, createError, chooseChat, sendText, isSending, sendError, pollError }
 }
