@@ -29,7 +29,8 @@ export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState 
       return {
         ...state,
         chats: state.chats.map((chat) => chat.chatId === action.chat.chatId
-          ? { ...chat, phoneNumber: action.chat.phoneNumber, username: action.chat.username }
+          ? { ...chat, phoneNumber: action.chat.phoneNumber, username: action.chat.username,
+              displayName: chat.displayName ?? action.chat.displayName }
           : chat),
         activeChatId: existing.id,
       }
@@ -68,7 +69,7 @@ export function chatReducer(state: ChatsState, action: ChatsAction): ChatsState 
     chatId,
     phoneNumber: existing?.phoneNumber ?? null,
     username: existing?.username,
-    displayName: existing?.displayName ?? action.displayName,
+    displayName: action.displayName ?? existing?.displayName,
   }
 
   return {
