@@ -38,7 +38,7 @@ export function useNotifications(
           try {
             notificationRef.current(notification.body)
           } finally {
-            await api.deleteNotification(notification.receiptId, controller.signal)
+            await api.deleteNotification(notification.receiptId)
           }
         } catch (error) {
           if (controller.signal.aborted) return
